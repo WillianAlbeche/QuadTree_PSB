@@ -12,8 +12,8 @@
 unsigned int first = 1;
 char desenhaBorda = 1;
 
-float levelDetailOfRegion(Img *pic, QuadNode* regiao);
-QuadNode* geraQuadtreeChild(QuadNode* root, float minDetail, float detalheAtual,Img* pic);
+float detalheRegiao(Img *pic, QuadNode* regiao);
+QuadNode* geraQuadtreeFilhos(QuadNode* root, float minDetail,Img* pic);
 QuadNode* newNode(int x, int y, int width, int height)
 {
     QuadNode* n = malloc(sizeof(QuadNode));
@@ -26,24 +26,21 @@ QuadNode* newNode(int x, int y, int width, int height)
     n->id = first++;
     return n;
 }
-QuadNode* geraQuadtreeChild(QuadNode* root, float minDetail, float detalheAtual,Img* pic){
-    detalheAtual++;
+QuadNode* geraQuadtreeFilhos(QuadNode* root, float minDetail, Img* pic){
+    
     RGB (*pixels)[pic->width] = (RGB(*)[pic->width]) pic->img;
-    float level = levelDetailOfRegion(pic,root);
-    if(level<=16){
+
+   float level = detalheRegiao(pic,root);
+    root->status = PARCIAL;
+    if(level<= minDetail){
         root->status = CHEIO;
-    }else if(level >=235){
-        root->status = NULL;
-    }
-    else{
-        root->status = PARCIAL;
     }
 
-    if(minDetail>detalheAtual){
-        root->NW = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->NE = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->SW = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->SE = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic); 
+    if(root->status == PARCIAL){
+        root->NW = geraQuadtreeFilhos(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,pic);
+        root->NE = geraQuadtreeFilhos(newNode(root->x+root->width/2,root->y,root->width/2,root->height/2),minDetail,pic);
+        root->SW = geraQuadtreeFilhos(newNode(root->x,root->y+root->height/2,root->width/2,root->height/2),minDetail,pic);
+        root->SE = geraQuadtreeFilhos(newNode(root->x+root->width/2,root->y+root->height/2,root->width/2,root->height/2),minDetail,pic); 
     }
     return root;
 
@@ -55,30 +52,23 @@ QuadNode* geraQuadtree(Img* pic, float minDetail)
     RGB (*pixels)[pic->width] = (RGB(*)[pic->width]) pic->img;
 
     // Veja como acessar os primeiros 10 pixels da imagem, por exemplo:
-    int i;
-    for(i=0; i<10; i++)
-        printf("%02X %02X %02X\n",pixels[0][i].r,pixels[1][i].g,pixels[2][i].b);
 
     int width = pic->width;
     int height = pic->height;
 
     QuadNode* root = newNode(0,0 , width, height);
     
-    float level = levelDetailOfRegion(pic,root);
-    if(level<=16){
+    float level = detalheRegiao(pic,root);
+    root->status = PARCIAL;
+    if(level<= minDetail){
         root->status = CHEIO;
-    }else if(level >=235){
-        root->status = NULL;
-    }
-    else{
-        root->status = PARCIAL;
     }
     
-    if(minDetail>0){
-        root->NW = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->NE = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->SW = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
-        root->SE = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic); 
+    if(root->status == PARCIAL){
+        root->NW = geraQuadtreeFilhos(newNode(0,0,width/2,height/2),minDetail,pic);
+        root->NE = geraQuadtreeFilhos(newNode(width/2,0,width/2,height/2),minDetail,pic);
+        root->SW = geraQuadtreeFilhos(newNode(0,height/2,width/2,height/2),minDetail,pic);
+        root->SE = geraQuadtreeFilhos(newNode(width/2,height/2,width/2,height/2),minDetail,pic); 
     }
 
     return root;
@@ -125,34 +115,38 @@ QuadNode* geraQuadtree(Img* pic, float minDetail)
     //return raiz;
 }
 
-float levelDetailOfRegion(Img *pic, QuadNode* regiao){
+float detalheRegiao(Img *pic, QuadNode* regiao){
     regiao->color[0] = regiao->color[1] = regiao->color[2] = 0;
 
      RGB (*pixels)[pic->width] = (RGB(*)[pic->width]) pic->img;
 
     float diferencaR = 0;
-    for (int i = regiao->y; i < regiao->height; i++){
-        for (int j = regiao->x; j < regiao->width; j++)
+    int somaRed = 0;
+    int somaGreen = 0;
+    int somaBlue = 0;
+
+    for (int i = regiao->y; i < regiao->y+regiao->height; i++){
+        for (int j = regiao->x; j < regiao->x+regiao->width; j++)
         {
-            regiao->color[0] += pixels[i][j].r;
-            regiao->color[1] += pixels[i][j].g;
-            regiao->color[2] += pixels[i][j].b;
+            somaRed += pixels[i][j].r;
+            somaGreen += pixels[i][j].g;
+            somaBlue += pixels[i][j].b;
         }
     }
     
-    float areaR = regiao->width * regiao->height;
+    float areaR= regiao->width * regiao->height;
 
-    regiao->color[0] = regiao->color[0]/(areaR);
-    regiao->color[1] = regiao->color[1]/(areaR);
-    regiao->color[2] = regiao->color[2]/(areaR);
+    regiao->color[0] = somaRed/areaR;
+    regiao->color[1] = somaGreen/areaR;
+    regiao->color[2] = somaBlue/areaR;
     
-    for (int i = regiao->y; i < regiao->height; i++){
-        for (int j = regiao->x; j < regiao->width; j++){
-            diferencaR = sqrt(pow(pixels[i][j].r - regiao->color[0],2) + (pow(pixels[i][j].g - regiao->color[1],2))+ (pow(pixels[i][j].b - regiao->color[2],2)));
+    for (int i = regiao->y; i < regiao->y+regiao->height; i++){
+        for (int j = regiao->x; j < regiao->x+regiao->width; j++){
+            diferencaR += sqrt(pow(pixels[i][j].r - regiao->color[0],2) + (pow(pixels[i][j].g - regiao->color[1],2)) + (pow(pixels[i][j].b - regiao->color[2],2)));
         }
     }
 
-    diferencaR = diferencaR/(areaR);
+    diferencaR = diferencaR/areaR;
 
     return diferencaR;
 }
@@ -220,9 +214,9 @@ void drawNode(QuadNode* n)
         glBegin(GL_QUADS);
         glColor3ubv(n->color);
         glVertex2f(n->x, n->y);
-        glVertex2f(n->x+n->width-1, n->y);
-        glVertex2f(n->x+n->width-1, n->y+n->height-1);
-        glVertex2f(n->x, n->y+n->height-1);
+        glVertex2f(n->x+n->width, n->y);
+        glVertex2f(n->x+n->width, n->y+n->height);
+        glVertex2f(n->x, n->y+n->height);
         glEnd();
     }
 
@@ -232,9 +226,9 @@ void drawNode(QuadNode* n)
             glBegin(GL_LINE_LOOP);
             glColor3ubv(n->color);
             glVertex2f(n->x, n->y);
-            glVertex2f(n->x+n->width-1, n->y);
-            glVertex2f(n->x+n->width-1, n->y+n->height-1);
-            glVertex2f(n->x, n->y+n->height-1);
+            glVertex2f(n->x+n->width, n->y);
+            glVertex2f(n->x+n->width, n->y+n->height);
+            glVertex2f(n->x, n->y+n->height);
             glEnd();
         }
         drawNode(n->NE);
