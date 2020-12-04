@@ -45,7 +45,6 @@ QuadNode* geraQuadtreeChild(QuadNode* root, float minDetail, float detalheAtual,
         root->SW = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic);
         root->SE = geraQuadtreeChild(newNode(root->x,root->y,root->width/2,root->height/2),minDetail,0,pic); 
     }
-
     return root;
 
 }
@@ -64,7 +63,7 @@ QuadNode* geraQuadtree(Img* pic, float minDetail)
     int height = pic->height;
 
     QuadNode* root = newNode(0,0 , width, height);
-
+    
     float level = levelDetailOfRegion(pic,root);
     if(level<=16){
         root->status = CHEIO;
